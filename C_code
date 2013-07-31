@@ -1,0 +1,705 @@
+#ifdef ORA_PROC
+    #include "swxoracle.h"
+#endif
+
+#include <stdlib.h>
+#include <stdio.h>
+#include <libgen.h>
+#include <string.h>
+#include <stropts.h>
+#include <time.h>
+#include <errno.h>
+#include <ctype.h>
+#include "build.h"
+#include "data.h"
+
+EXEC SQL INCLUDE sqlca;
+
+char str[200];
+
+struct logrcd lrf;
+#define MESSAGE_CNT (sizeof(lr_table)/sizeof(struct lrfields))
+#define BUFF_SIZE  400
+
+char *tmp_val;
+char ti[20];
+
+typedef char *lrfield();
+
+struct lrfields {
+    char name[26];
+    lrfield *f;
+};
+
+struct lrfields lr_table[] = {
+    {"acct_1_curr_code", acct_1_curr_code},     
+    {"acct_1_nbr", acct_1_nbr},
+    {"acct_2_curr_code", acct_2_curr_code},
+    {"acct_2_nbr", acct_2_nbr},
+    {"acct_ptr_1", acct_ptr_1},
+    {"acct_ptr_2", acct_ptr_2},
+    {"acct_type_1", acct_type_1},
+    {"acct_type_2", acct_type_2},
+    {"acq_cntry_code", acq_cntry_code},
+    {"amount_auth", amount_auth},
+    {"amount_req", amount_req},
+    {"auth_stamp_sec", auth_stamp_sec},
+    {"auth_stamp_usec", auth_stamp_usec},
+    {"auth_time", auth_time},
+    {"authorizer", authorizer},
+    {"bal_1", bal_1},
+    {"bal_1_curr_code", bal_1_curr_code},
+    {"bal_2", bal_2},
+    {"bal_2_curr_code", bal_2_curr_code},
+    {"bal_3", bal_3},
+    {"bal_3_curr_code", bal_3_curr_code},
+    {"bal_4", bal_4},
+    {"bal_4_curr_code", bal_4_curr_code},
+    {"bill_number", bill_number},          
+    {"bin", bin},
+    {"branch_nbr", branch_nbr},
+    {"cann_1_disp_count", cann_1_disp_count},
+    {"cann_2_disp_count", cann_2_disp_count},
+    {"cann_3_disp_count", cann_3_disp_count},
+    {"cann_4_disp_count", cann_4_disp_count},
+    {"cann_5_disp_count", cann_5_disp_count},    
+    {"cann_6_disp_count", cann_6_disp_count},    
+    {"cann_7_disp_count", cann_7_disp_count},    
+    {"cann_8_disp_count", cann_8_disp_count},    
+    {"card_capt_flag", card_capt_flag},
+    {"card_expiry_date", card_expiry_date},
+    {"cardholder", cardholder},
+    {"chp_datetime", chp_datetime},
+    {"chp_extra", chp_extra},
+    {"chp_fee", chp_fee},
+    {"chp_inst_nbr", chp_inst_nbr},
+    {"chp_name", chp_name},
+    {"chp_setl_date", chp_setl_date},
+    {"chp_sun", chp_sun},
+    {"commission_fee", commission_fee},
+    {"completed_flag", completed_flag},
+    {"crc_32", crc_32},
+    {"device_id", device_id},
+    {"etb", etb},
+    {"etx", etx},
+    {"exchange_rate", exchange_rate},
+    {"fwd_cntry_code", fwd_cntry_code},
+    {"gl_acct_1", gl_acct_1},
+    {"gl_acct_2", gl_acct_2},
+    {"hsm_version_nbr", hsm_version_nbr},
+    {"inst_mnemonic", inst_mnemonic},
+    {"iso_acq_inst", iso_acq_inst},
+    {"iso_auth_id", iso_auth_id},
+    {"iso_forward_inst", iso_forward_inst},
+    {"iso_orig_msg_type", iso_orig_msg_type},
+    {"iso_proc_code", iso_proc_code},
+    {"iso_recv_inst", iso_recv_inst},
+    {"iso_resp_code", iso_resp_code},
+    {"lang_code", lang_code},
+    {"log_reentry_code", log_reentry_code},
+    {"member", member},
+    {"misc_extra", misc_extra},
+    {"msg_code", msg_code},
+    {"msg_coord", msg_coord},
+    {"msg_id", msg_id},
+    {"nbr_dec", nbr_dec},
+    {"new_pin", new_pin},
+    {"old_pin_offset", old_pin_offset},
+    {"orig_amt_auth", orig_amt_auth},
+    {"orig_amt_req", orig_amt_req},
+    {"orig_curr_code", orig_curr_code},
+    {"orig_sys_seq_nbr", orig_sys_seq_nbr},
+    {"orig_tran_datetime", orig_tran_datetime},
+    {"pan", pan},
+    {"pin", pin},
+    {"pos_auth_cycle", pos_auth_cycle},
+    {"pos_batch_nbr", pos_batch_nbr},
+    {"pos_cash_out", pos_cash_out},
+    {"pos_cond_code", pos_cond_code},
+    {"pos_entry_mode", pos_entry_mode},
+    {"pos_merch_id", pos_merch_id},
+    {"pos_merch_nbr", pos_merch_nbr},
+    {"pos_merch_type", pos_merch_type},
+    {"pri_tran_code", pri_tran_code},
+    {"receipt_flag", receipt_flag},         
+    {"recv_cntry_code", recv_cntry_code},
+    {"reversed_flag", reversed_flag},        
+    {"rtrvl_ref_nbr", rtrvl_ref_nbr},
+    {"sec_tran_code", sec_tran_code},
+    {"setl_amt", setl_amt},
+    {"setl_amt_auth", setl_amt_auth},
+    {"setl_curr_code", setl_curr_code},
+    {"setl_fee", setl_fee},
+    {"stx", stx},
+    {"sub_network_name", sub_network_name},
+    {"suspect_flag", suspect_flag},
+    {"swx_setl_date", swx_setl_date},
+    {"sys_seq_nbr", sys_seq_nbr},
+    {"term_type", term_type},
+    {"terminal_id", terminal_id},
+    {"tp_datetime", tp_datetime},
+    {"tp_extra", tp_extra},
+    {"tp_fee", tp_fee},
+    {"tp_inst_nbr", tp_inst_nbr},
+    {"tp_name", tp_name},
+    {"tp_reg_e", tp_reg_e},
+    {"tp_seq", tp_seq},
+    {"track1", track1},
+    {"track2_data", track2_data},
+    {"tran_datetime", tran_datetime},
+    {"tran_stamp_sec", tran_stamp_sec},
+    {"tran_stamp_usec", tran_stamp_usec},
+    {"tran_time", tran_time},
+    {"trn_curr_code", trn_curr_code},
+    {"type_code", type_code},
+    {"upd_standby", upd_standby},
+    {"void_code", void_code}
+};
+
+int searchChar(char *str, char ch)
+{
+ int i;
+ for(i=0; str[i]!='\0'; i++)
+ {
+   if(str[i]==ch)
+      return i;
+ }
+ return -1;
+}
+
+int
+lrfields_cmp(char *a, struct lrfields *b)
+{
+    return memcmp(a, b->name, strlen(b->name));
+}
+
+
+struct lrfields *
+find_lrfields(char *ptr, struct lrfields *rf, int cnt)
+{
+    struct lrfields *cur, *bcur, *end_rf;
+    typedef int (compar)(const void *,const void *);
+
+    cur = (struct lrfields *) bsearch(ptr, rf, cnt,
+        sizeof(struct lrfields), (compar *)lrfields_cmp);
+    if (cur) {
+        
+        end_rf = &rf[cnt-1];
+        for (bcur = cur; bcur <= end_rf; bcur++) {
+            if (!memcmp(bcur->name, ptr, strlen(cur->name))) {
+                if (!memcmp(bcur->name, ptr, strlen(bcur->name)))
+                    cur = bcur;
+            }
+            else break;
+        }
+    }
+    else
+    {
+        sprintf(str, "ERROR: no function (%.15s)\n", ptr);
+        tgl_trace(str);
+    }
+    return cur;
+}
+
+
+char
+*call_func(char *xml, int offset)
+{	
+    char *ptr, *ptr1, *ptr2;
+    char buf[BUFF_SIZE];
+    struct lrfields *cur;
+    char *result,fixedval[300];
+    int len;
+   
+    ptr2=xml;
+    ptr = xml+offset; 
+    cur = find_lrfields(ptr, lr_table, MESSAGE_CNT);
+    sprintf(str, "call_func: calling function ... %s",cur->name);
+    tgl_trace(str);
+    ptr = ptr+strlen(cur->name);
+
+    *xml = 0;
+    strcat(xml, ptr);
+    result = cur->f();
+     
+    ptr1=strstr(ptr2,"(func)");
+
+    if (ptr1)
+    {
+        if(ptr1!=ptr2)
+        {	
+        	len=strlen(ptr2)-strlen(ptr1);
+        	strncpy(fixedval,ptr2,len);
+        	fixedval[len]='\0';
+        	sprintf(str, "fixedval(%s)", fixedval);
+            tgl_trace(str);
+            strcat(result,fixedval);
+        }
+    }
+    else
+    {
+        strcat(result,ptr2);
+    }    
+    sprintf(str, "result(%s)", result);
+    tgl_trace(str);
+    return result;
+}
+
+char *get_format(int message_code)
+{
+	m_code = message_code;
+	char
+	*format="(func)stx(func)msg_code(func)etb1(func)etb(func)crc_32(func)etx";
+	
+    /**format="(func)stx(func)pri_tran_code(func)sec_tran_code(func)cardholder!~(func)tran_datetime!~(func)type_code!~(func)authorizer!~1928!~auth!~(func)pos_auth_cycle!~(func)void_code!~(func)pos_merch_type!~(func)sys_seq_nbr!~56789";*/
+	return format;
+}
+
+char* get_msg_val()
+{
+	char msg_format[301],final_data[300],*reqmsg,*tmpval;
+    char *tmp_msg_format=get_format(1);
+    char *tmp=&msg_format[0];
+    strcpy(msg_format,tmp_msg_format);
+    memset(final_data,(int) NULL, sizeof(final_data));
+   
+    while ((tmp = strstr(tmp, "(func)")) != NULL)
+    {
+        tmpval = call_func(tmp, 6);
+        strcat(final_data,tmpval);
+    }
+    reqmsg = strdup(final_data);
+    return reqmsg;
+}
+
+int 
+fetch_data()
+{
+    char tran_dt[16];
+           
+    EXEC SQL begin declare section;
+    	int     type_code;
+        char    pri_tran_code[5];
+        char    sec_tran_code[5];
+        char    authorizer[5];
+        int     void_code;
+        int     log_reentry_code;
+        dtime_t tran_datetime;
+        int     sys_seq_nbr;
+        char    rtrvl_ref_nbr[13];
+        char    card_capt_flag[2];
+        char    term_type[5];
+        int     hsm_version_nbr;
+        char    track2_data[41];
+        int     member;
+        dec_t    bin;
+        dec_t   cardholder;
+        char    pin[18];
+        char    new_pin[18];
+        int     acct_type_1;
+        int     acct_type_2;
+        int     acct_ptr_1;
+        int     acct_ptr_2;
+        char    acct_1_nbr[20];
+        char    acct_2_nbr[20];
+        dec_t    amount_req;
+        dec_t    amount_auth;
+        int     nbr_dec;
+        dec_t    bal_1;
+        dec_t    bal_2;
+        char    tp_name[5];
+        dec_t    tp_inst_nbr;
+        dtime_t tp_datetime;
+        int     tp_seq;
+        int     device_id;
+        int     tp_fee;
+        char    tp_reg_e[51];
+        char    terminal_id[51];
+        dtime_t swx_setl_date;
+        dtime_t chp_setl_date;
+        char    chp_name[5];
+        dec_t    chp_inst_nbr;
+        dtime_t chp_datetime;
+        int     chp_sun;
+        int     chp_fee;
+        dec_t    pos_merch_nbr;
+        char    pos_merch_id[16];
+        dtime_t card_expiry_date;
+        dec_t    pos_cash_out;
+        int     upd_standby;
+        dec_t  auth_time;
+        char    auth_stamp_sec[11];
+        char    auth_stamp_usec[7];      
+        dec_t  tran_time;
+        char    tran_stamp_sec[11];
+        char    tran_stamp_usec[7];
+        char    iso_resp_code[3];
+        char    iso_proc_code[7];
+        char    iso_orig_msg_type[5];
+        char    iso_auth_id[7]; 
+        char    trn_curr_code[4];
+        dec_t    setl_amt;
+        dec_t    setl_fee;             
+        dec_t    setl_curr_code;
+        dec_t  exchange_rate;
+        dec_t    commission_fee;
+        char    suspect_flag[1];
+        int     cann_1_disp_count;
+        int     cann_2_disp_count;
+        int     cann_3_disp_count;
+        int     cann_4_disp_count;
+        char    tp_extra[260];
+        char    misc_extra[260];
+        char    chp_extra[260];
+        dec_t    iso_acq_inst;
+        dec_t    setl_amt_auth;
+        dec_t    orig_amt_req;
+        dec_t    orig_amt_auth;
+        char    orig_curr_code[4];
+        dec_t    iso_forward_inst;
+        int     branch_nbr;
+        dec_t    bal_3;
+        dec_t    bal_4;
+        int     acq_cntry_code;
+        int     fwd_cntry_code;
+        int     recv_cntry_code;
+        dec_t    iso_recv_inst;
+        char    track1[80];
+        int     orig_sys_seq_nbr;
+        dtime_t orig_tran_datetime;
+        char    msg_coord[2];
+        char    lang_code[2];
+        char    pos_merch_type[5];
+        char    pos_cond_code[3];
+        int     pos_auth_cycle;
+        char    pos_entry_mode[4];
+        int     pos_batch_nbr;
+        char    inst_mnemonic[5];
+        char    gl_acct_1[21];
+        char    gl_acct_2[21];
+        char    acct_1_curr_code[4];
+        char    acct_2_curr_code[4];
+        char    bal_1_curr_code[4];
+        char    bal_2_curr_code[4];
+        char    bal_3_curr_code[4];
+        char    bal_4_curr_code[4];
+        char    sub_network_name[5];
+        char    old_pin_offset[9];
+        char    pan[20];
+        char    cann_5_disp_count[3];
+        char    cann_6_disp_count[3];
+        char    cann_7_disp_count[3];
+        char    cann_8_disp_count[3];
+        char    receipt_flag[2];
+        char    bill_number[22];
+        char    reversed_flag[2];
+        char    completed_flag[2];
+    EXEC SQL END DECLARE SECTION;
+    
+    EXEC SQL declare log3 cursor for select NVL(type_code,0),
+                                            NVL(pri_tran_code,' '),
+                                            NVL(sec_tran_code,' '),
+                                            NVL(authorizer,' '),
+                                            NVL(void_code,0),
+                                            NVL(log_reentry_code,0),
+                                            NVL(tran_datetime,to_date('0001','YYYY')),
+                                            NVL(sys_seq_nbr,0),
+                                            NVL(rtrvl_ref_nbr,' '),
+                                            NVL(card_capt_flag,' '),
+                                            NVL(term_type,' '),
+                                            NVL(hsm_version_nbr,0),
+                                            NVL(track2_data,' '),
+                                            NVL(member,0),
+                                            NVL(bin,0),
+                                            NVL(cardholder,0),
+                                            NVL(pin,' '),
+                                            NVL(new_pin,' '),
+                                            NVL(acct_type_1,0),
+                                            NVL(acct_type_2,0),
+                                            NVL(acct_ptr_1,0),
+                                            NVL(acct_ptr_2,0),
+                                            NVL(acct_1_nbr,' '),
+                                            NVL(acct_2_nbr,' '),
+                                            NVL(amount_req,0),
+                                            NVL(amount_auth,0),
+                                            NVL(nbr_dec,0),
+                                            NVL(bal_1,0),
+                                            NVL(bal_2,0),
+                                            NVL(tp_name,' '),
+                                            NVL(tp_inst_nbr,0),
+                                            NVL(tp_datetime,to_date('0001','YYYY')),
+                                            NVL(tp_seq,0),
+                                            NVL(device_id,0),
+                                            NVL(tp_fee,0),
+                                            NVL(tp_reg_e,' '),
+                                            NVL(terminal_id,' '),
+                                            NVL(swx_setl_date,to_date('0001','YYYY')),
+                                            NVL(chp_setl_date,to_date('0001','YYYY')),
+                                            NVL(chp_name,' '),
+                                            NVL(chp_inst_nbr,0),
+                                            NVL(chp_datetime,to_date('0001','YYYY')),
+                                            NVL(chp_sun,0),
+                                            NVL(chp_fee,0),
+                                            NVL(pos_merch_nbr,0),
+                                            NVL(pos_merch_id,' '),
+                                            NVL(card_expiry_date,to_date('0001','YYYY')),
+                                            NVL(pos_cash_out,0),
+                                            NVL(upd_standby,0),
+                                            NVL(auth_time,0),
+                                            NVL(auth_stamp_sec,' '),
+                                            NVL(auth_stamp_usec,' '),
+                                            NVL(tran_time,0),
+                                            NVL(tran_stamp_sec,' '),
+                                            NVL(tran_stamp_usec,' '),
+                                            NVL(iso_resp_code,' '),
+                                            NVL(iso_proc_code,' '),
+                                            NVL(iso_orig_msg_type,' '),
+                                            NVL(iso_auth_id,' '),
+                                            NVL(trn_curr_code,' '),
+                                            NVL(setl_amt,0),
+                                            NVL(setl_fee,0),
+                                            NVL(setl_curr_code,0),
+                                            NVL(exchange_rate,0),
+                                            NVL(commission_fee,0),
+                                            NVL(suspect_flag,' '),
+                                            NVL(cann_1_disp_count,0),
+                                            NVL(cann_2_disp_count,0),
+                                            NVL(cann_3_disp_count,0),
+                                            NVL(cann_4_disp_count,0),
+                                            NVL(tp_extra,' '),
+                                            NVL(misc_extra,' '),
+                                            NVL(chp_extra,' '),
+                                            NVL(iso_acq_inst,0),
+                                            NVL(setl_amt_auth,0),
+                                            NVL(orig_amt_req,0),
+                                            NVL(orig_amt_auth,0),
+                                            NVL(orig_curr_code,' '),
+                                            NVL(iso_forward_inst,0),
+                                            NVL(branch_nbr,0) from log_record WHERE sys_seq_nbr=674010;
+       
+    EXEC SQL open log3;
+    if(sqlca.sqlcode) 
+    {
+        printf("Error : sqlcode(%d) for open log3\n", sqlca.sqlcode);
+        sprintf(str, "(%d) for open log3\0",sqlca.sqlcode);
+        tgl_trace(str);
+        tgl_error(str);
+        return;
+    }
+    
+    for(;;) 
+    {
+        EXEC SQL fetch log3
+            into
+
+             :type_code, :pri_tran_code, :sec_tran_code, :authorizer, :void_code, :log_reentry_code, :tran_datetime, :sys_seq_nbr, :rtrvl_ref_nbr, :card_capt_flag, :term_type, :hsm_version_nbr, :track2_data, :member, :bin, :cardholder, :pin, :new_pin, :acct_type_1, :acct_type_2, :acct_ptr_1, :acct_ptr_2, :acct_1_nbr, :acct_2_nbr, :amount_req, :amount_auth, :nbr_dec, :bal_1, :bal_2, :tp_name, :tp_inst_nbr, :tp_datetime, :tp_seq, :device_id, :tp_fee, :tp_reg_e, :terminal_id, :swx_setl_date, :chp_setl_date, :chp_name, :chp_inst_nbr, :chp_datetime, :chp_sun, :chp_fee, :pos_merch_nbr, :pos_merch_id, :card_expiry_date, :pos_cash_out, :upd_standby, :auth_time, :auth_stamp_sec, :auth_stamp_usec, :tran_time, :tran_stamp_sec, :tran_stamp_usec, :iso_resp_code, :iso_proc_code, :iso_orig_msg_type, :iso_auth_id, :trn_curr_code, :setl_amt, :setl_fee, :setl_curr_code, :exchange_rate, :commission_fee, :suspect_flag, :cann_1_disp_count, :cann_2_disp_count, :cann_3_disp_count, :cann_4_disp_count, :tp_extra, :misc_extra, :chp_extra, :iso_acq_inst, :setl_amt_auth, :orig_amt_req, :orig_amt_auth, :orig_curr_code, :iso_forward_inst, :branch_nbr;
+            if(sqlca.sqlcode) 
+            {
+                if (sqlca.sqlcode != DB_NORECORDS) 
+                {
+                    printf("Error : sqlcode(%d) for fetch log3\n", sqlca.sqlcode);
+                    sprintf(str, "fetch_data() : Error : sqlcode(%d) for fetch log3\0", sqlca.sqlcode);
+                    tgl_trace(str);
+                    tgl_error(str);
+                    return;
+                }
+                break;
+            }
+        
+    }
+    
+    EXEC SQL declare log5 cursor for select NVL(bal_3,0),
+                                            NVL(bal_4,0),
+                                            NVL(acq_cntry_code,0),
+                                            NVL(fwd_cntry_code,0),
+                                            NVL(recv_cntry_code,0),
+                                            NVL(iso_recv_inst,0),
+                                            NVL(track1,' '),
+                                            NVL(orig_sys_seq_nbr,0),
+                                            NVL(orig_tran_datetime,to_date('0001','YYYY')),
+                                            NVL(msg_coord,' '),
+                                            NVL(lang_code,' '),
+                                            NVL(pos_merch_type,' '),
+                                            NVL(pos_cond_code,' '),
+                                            NVL(pos_auth_cycle,0),
+                                            NVL(pos_entry_mode,' '),
+                                            NVL(pos_batch_nbr,0),
+                                            NVL(inst_mnemonic,' '),
+                                            NVL(gl_acct_1,' '),
+                                            NVL(gl_acct_2,' '),
+                                            NVL(acct_1_curr_code,' '),
+                                            NVL(acct_2_curr_code,' '),
+                                            NVL(bal_1_curr_code,' '),
+                                            NVL(bal_2_curr_code,' '),
+                                            NVL(bal_3_curr_code,' '),
+                                            NVL(bal_4_curr_code,' '),
+                                            NVL(sub_network_name,' '),
+                                            NVL(old_pin_offset,' '),
+                                            NVL(pan,' '),
+                                            NVL(cann_5_disp_count,' '),
+                                            NVL(cann_6_disp_count,' '),
+                                            NVL(cann_7_disp_count,' '),
+                                            NVL(cann_8_disp_count,' '),
+                                            NVL(receipt_flag,' '),
+                                            NVL(bill_number,' '),
+                                            NVL(reversed_flag,' '),
+                                            NVL(completed_flag,' ') from log_record WHERE sys_seq_nbr=674010;
+        
+    EXEC SQL open log5;
+    if(sqlca.sqlcode) 
+    {
+        printf("Error : sqlcode(%d) for open log5\n", sqlca.sqlcode);
+        sprintf(str, "(%d) for open log5\0",sqlca.sqlcode);
+        tgl_trace(str);
+        tgl_error(str);
+        return;
+    }
+    
+    for(;;) 
+    {
+        EXEC SQL fetch log5
+            into
+
+            :bal_3, :bal_4, :acq_cntry_code, :fwd_cntry_code, :recv_cntry_code, :iso_recv_inst, :track1, :orig_sys_seq_nbr, :orig_tran_datetime, :msg_coord, :lang_code, :pos_merch_type, :pos_cond_code, :pos_auth_cycle, :pos_entry_mode, :pos_batch_nbr, :inst_mnemonic, :gl_acct_1, :gl_acct_2, :acct_1_curr_code, :acct_2_curr_code, :bal_1_curr_code, :bal_2_curr_code, :bal_3_curr_code, :bal_4_curr_code, :sub_network_name, :old_pin_offset, :pan, :cann_5_disp_count, :cann_6_disp_count, :cann_7_disp_count, :cann_8_disp_count, :receipt_flag, :bill_number, :reversed_flag, :completed_flag;
+            if(sqlca.sqlcode) 
+            {
+                if (sqlca.sqlcode != DB_NORECORDS) 
+                {
+                    printf("Error : sqlcode(%d) for fetch log5\n", sqlca.sqlcode);
+                    sprintf(str, "fetch_data() : Error : sqlcode(%d) for fetch log5\0", sqlca.sqlcode);
+                    tgl_trace(str);
+                    tgl_error(str);
+                    return;
+                }
+                break;
+            }
+        
+    }
+    
+    lrf.type_code=type_code;
+    memcpy(lrf.pri_tran_code,pri_tran_code,sizeof(pri_tran_code));
+    memcpy(lrf.sec_tran_code,sec_tran_code,sizeof(sec_tran_code));
+    memcpy(lrf.authorizer,authorizer,sizeof(authorizer));
+    lrf.void_code=void_code;
+    sprintf(str, "lrf.void_code= %d",lrf.void_code);
+    tgl_trace(str);
+    sprintf(str, "void_code= %d",void_code);
+    tgl_trace(str);
+    lrf.log_reentry_code=log_reentry_code;
+    memcpy(lrf.tran_datetime,tran_datetime,sizeof(tran_datetime));
+    lrf.sys_seq_nbr=sys_seq_nbr;
+    memcpy(lrf.rtrvl_ref_nbr,rtrvl_ref_nbr,sizeof(rtrvl_ref_nbr));
+    memcpy(lrf.card_capt_flag,card_capt_flag,sizeof(card_capt_flag));
+    memcpy(lrf.term_type,term_type,sizeof(term_type));
+    lrf.hsm_version_nbr;
+    memcpy(lrf.track2_data,track2_data,sizeof(track2_data));
+    lrf.member=member;
+    memcpy(lrf.bin,bin,sizeof(bin));
+    memcpy(lrf.cardholder,cardholder,sizeof(cardholder));
+    memcpy(lrf.pin,pin,sizeof(pin));
+    memcpy(lrf.new_pin,new_pin,sizeof(new_pin));
+    lrf.acct_type_1=acct_type_1;
+    lrf.acct_type_2=acct_type_2;
+    lrf.acct_ptr_1=acct_ptr_1;
+    lrf.acct_ptr_2=acct_ptr_2;
+    memcpy(lrf.acct_1_nbr,acct_1_nbr,sizeof(acct_1_nbr));
+    memcpy(lrf.acct_2_nbr,acct_2_nbr,sizeof(acct_2_nbr));
+    memcpy(lrf.amount_req,amount_req,sizeof(amount_req));
+    memcpy(lrf.amount_auth,amount_auth,sizeof(amount_auth));
+    lrf.nbr_dec=nbr_dec;
+    memcpy(lrf.bal_1,bal_1,sizeof(bal_1));
+    memcpy(lrf.bal_2,bal_2,sizeof(bal_2));
+    memcpy(lrf.tp_name,tp_name,sizeof(tp_name));
+    memcpy(lrf.tp_inst_nbr,tp_inst_nbr,sizeof(tp_inst_nbr));
+    memcpy(lrf.tp_datetime,tp_datetime,sizeof(tp_datetime));
+    lrf.tp_seq=tp_seq;
+    lrf.device_id=device_id;
+    lrf.tp_fee=device_id;
+    memcpy(lrf.tp_reg_e,tp_reg_e,sizeof(tp_reg_e));
+    memcpy(lrf.terminal_id,terminal_id,sizeof(terminal_id));
+    memcpy(lrf.swx_setl_date,swx_setl_date,sizeof(swx_setl_date));
+    memcpy(lrf.chp_setl_date,chp_setl_date,sizeof(chp_setl_date));
+    memcpy(lrf.chp_name,chp_name,sizeof(chp_name));
+    memcpy(lrf.chp_inst_nbr,chp_inst_nbr,sizeof(chp_inst_nbr));
+    memcpy(lrf.chp_datetime,chp_datetime,sizeof(chp_datetime));
+    lrf.chp_sun=chp_sun;
+    lrf.chp_fee=chp_fee;
+    memcpy(lrf.pos_merch_nbr,pos_merch_nbr,sizeof(pos_merch_nbr));
+    memcpy(lrf.pos_merch_id,pos_merch_id,sizeof(pos_merch_id));
+    memcpy(lrf.card_expiry_date,card_expiry_date,sizeof(card_expiry_date));
+    memcpy(lrf.pos_cash_out,pos_cash_out,sizeof(pos_cash_out));
+    lrf.upd_standby=upd_standby;
+    memcpy(lrf.auth_time,auth_time,sizeof(auth_time));
+    memcpy(lrf.auth_stamp_sec,auth_stamp_sec,sizeof(auth_stamp_sec));
+    memcpy(lrf.auth_stamp_usec,auth_stamp_usec,sizeof(auth_stamp_usec));      
+    memcpy(lrf.tran_time,tran_time,sizeof(tran_time));
+    memcpy(lrf.tran_stamp_sec,tran_stamp_sec,sizeof(tran_stamp_sec));
+    memcpy(lrf.tran_stamp_usec,tran_stamp_usec,sizeof(tran_stamp_usec));
+    memcpy(lrf.iso_resp_code,iso_resp_code,sizeof(iso_resp_code));
+    memcpy(lrf.iso_proc_code,iso_proc_code,sizeof(iso_proc_code));
+    memcpy(lrf.iso_orig_msg_type,iso_orig_msg_type,sizeof(iso_orig_msg_type));
+    memcpy(lrf.iso_auth_id,iso_auth_id,sizeof(iso_auth_id));
+    memcpy(lrf.trn_curr_code,trn_curr_code,sizeof(trn_curr_code));
+    memcpy(lrf.setl_amt,setl_amt,sizeof(setl_amt));
+    memcpy(lrf.setl_fee,setl_fee,sizeof(setl_fee));             
+    memcpy(lrf.setl_curr_code,setl_curr_code,sizeof(setl_curr_code));
+    memcpy(lrf.exchange_rate,exchange_rate,sizeof(exchange_rate));
+    memcpy(lrf.commission_fee,commission_fee,sizeof(commission_fee));
+    memcpy(lrf.suspect_flag,suspect_flag,sizeof(suspect_flag));
+    lrf.cann_1_disp_count=cann_1_disp_count;
+    lrf.cann_2_disp_count=cann_2_disp_count;
+    lrf.cann_3_disp_count=cann_3_disp_count;
+    lrf.cann_4_disp_count=cann_4_disp_count;
+    memcpy(lrf.tp_extra,tp_extra,sizeof(tp_extra));
+    memcpy(lrf.misc_extra,misc_extra,sizeof(misc_extra));
+    memcpy(lrf.chp_extra,chp_extra,sizeof(chp_extra));
+    memcpy(lrf.iso_acq_inst,iso_acq_inst,sizeof(iso_acq_inst));
+    memcpy(lrf.setl_amt_auth,setl_amt_auth,sizeof(setl_amt_auth));
+    memcpy(lrf.orig_amt_req,orig_amt_req,sizeof(orig_amt_req));
+    memcpy(lrf.orig_amt_auth,orig_amt_auth,sizeof(orig_amt_auth));
+    memcpy(lrf.orig_curr_code,orig_curr_code,sizeof(orig_curr_code));
+    memcpy(lrf.iso_forward_inst,iso_forward_inst,sizeof(iso_forward_inst));
+    lrf.branch_nbr=branch_nbr;
+    memcpy(lrf.bal_3,bal_3,sizeof(bal_3));
+    memcpy(lrf.bal_4,bal_4,sizeof(bal_4));
+    lrf.acq_cntry_code=acq_cntry_code;
+    lrf.fwd_cntry_code=fwd_cntry_code;
+    lrf.recv_cntry_code=recv_cntry_code;
+    memcpy(lrf.iso_recv_inst,iso_recv_inst,sizeof(iso_recv_inst));
+    memcpy(lrf.track1,track1,sizeof(track1));
+    lrf.orig_sys_seq_nbr=orig_sys_seq_nbr;
+    memcpy(lrf.orig_tran_datetime,orig_tran_datetime,sizeof(orig_tran_datetime));
+    memcpy(lrf.msg_coord,msg_coord,sizeof(msg_coord));
+    memcpy(lrf.pos_merch_type,pos_merch_type,sizeof(pos_merch_type));
+    memcpy(lrf.lang_code,lang_code,sizeof(lang_code));
+    memcpy(lrf.pos_cond_code,pos_cond_code,sizeof(pos_cond_code));
+    lrf.pos_auth_cycle=pos_auth_cycle;
+    memcpy(lrf.pos_entry_mode,pos_entry_mode,sizeof(pos_entry_mode));
+    lrf.pos_batch_nbr=pos_batch_nbr;
+    memcpy(lrf.inst_mnemonic,inst_mnemonic,sizeof(inst_mnemonic));
+    memcpy(lrf.gl_acct_1,gl_acct_1,sizeof(gl_acct_1));
+    memcpy(lrf.gl_acct_2,gl_acct_2,sizeof(gl_acct_2));
+    memcpy(lrf.acct_1_curr_code,acct_1_curr_code,sizeof(acct_1_curr_code));
+    memcpy(lrf.acct_2_curr_code,acct_2_curr_code,sizeof(acct_2_curr_code));
+    memcpy(lrf.bal_1_curr_code,bal_1_curr_code,sizeof(bal_1_curr_code));
+    memcpy(lrf.bal_2_curr_code,bal_2_curr_code,sizeof(bal_2_curr_code));
+    memcpy(lrf.bal_3_curr_code,bal_3_curr_code,sizeof(bal_3_curr_code));
+    memcpy(lrf.bal_4_curr_code,bal_4_curr_code,sizeof(bal_4_curr_code));
+    memcpy(lrf.sub_network_name,sub_network_name,sizeof(sub_network_name));
+    memcpy(lrf.old_pin_offset,old_pin_offset,sizeof(old_pin_offset));
+    memcpy(lrf.pan,pan,sizeof(pan));
+    memcpy(lrf.cann_5_disp_count,cann_5_disp_count,sizeof(cann_5_disp_count));
+    memcpy(lrf.cann_6_disp_count,cann_6_disp_count,sizeof(cann_6_disp_count));
+    memcpy(lrf.cann_7_disp_count,cann_7_disp_count,sizeof(cann_7_disp_count));
+    memcpy(lrf.cann_8_disp_count,cann_8_disp_count,sizeof(cann_8_disp_count));
+    memcpy(lrf.receipt_flag,receipt_flag,sizeof(receipt_flag));
+    memcpy(lrf.bill_number,bill_number,sizeof(bill_number));
+    memcpy(lrf.reversed_flag,reversed_flag,sizeof(reversed_flag));
+    memcpy(lrf.completed_flag,completed_flag,sizeof(completed_flag));
+        
+    tgl_trace("fetching data completes");
+    return;
+}
+
+
+
