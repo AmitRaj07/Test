@@ -174,6 +174,26 @@ lrfields_cmp(char *a, struct lrfields *b)
 }
 
 
+char* get_msg_val111111()
+{
+char msg_format[301],final_data[300],*reqmsg,*tmpval;
+    char *tmp_msg_format=get_format(1);
+    char *tmp=&msg_format[0];
+    strcpy(msg_format,tmp_msg_format);
+    memset(final_data,(int) NULL, sizeof(final_data));
+   
+    while ((tmp = strstr(tmp, "(func)")) != NULL)
+    {
+        tmpval = call_func(tmp, 6);
+        strcat(final_data,tmpval);
+    }
+    reqmsg = strdup(final_data);
+    return reqmsg;
+}
+
+
+
+
 struct lrfields *
 find_lrfields(char *ptr, struct lrfields *rf, int cnt)
 {
