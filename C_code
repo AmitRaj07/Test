@@ -193,11 +193,6 @@ find_lrfields(char *ptr, struct lrfields *rf, int cnt)
             else break;
         }
     }
-    else
-    {
-        sprintf(str, "ERROR: no function (%.15s)\n", ptr);
-        tgl_trace(str);
-    }
     return cur;
 }
 
